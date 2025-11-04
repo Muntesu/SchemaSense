@@ -1,0 +1,21 @@
+meta {
+  name: ping HealthCheck
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/ping
+  body: none
+  auth: inherit
+}
+
+headers {
+  Accept: application/json
+}
+
+tests {
+  test("should return 201", function () {
+    expect(res.getStatus()).to.equal(201);
+  });
+}

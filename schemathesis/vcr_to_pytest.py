@@ -1,0 +1,469 @@
+#!/usr/bin/env python3
+"""
+Convert Schemathesis VCR YAML to pytest test files organized by phase.
+
+Usage:
+    python vcr_to_pytest.py reports/vcr-*.yaml test/test_schemathesis/ [--analysis analysis.json]
+
+This will generate separate test files for each Schemathesis phase:
+- test_phase_examples.py (examples phase)
+- test_phase_coverage.py (coverage phase)
+- test_phase_fuzzing.py (fuzzing phase)
+- test_phase_stateful.py (stateful phase)
+
+If --analysis is provided, will use AI-generated randomized test data instead of hardcoded VCR values.
+
+Why VCR YAML is easier than JSON/HAR:
+1. VCR YAML is designed for test replay - has structured request/response pairs
+2. Contains test metadata: status (SUCCESS/FAILURE), checks, test IDs, phases
+3. Flat structure - easy to iterate over http_interactions
+4. HAR format is verbose, browser-focused, lacks test context
+5. HAR has deeply nested structures (log.entries.request/response) harder to parse
+6. VCR includes assertions and validation results directly in the structure
+"""
+
+import yaml
+import sys
+import json
+import re
+from pathlib import Path
+from urllib.parse import urlparse, unquote
+from collections import defaultdict
+from typing import Dict, Optional, Any, Set
+
+
+def sanitize_function_name(name):
+    """Sanitize a string to be a valid Python function name."""
+    # Remove URL encoding, decode if needed
+    try:
+        name = unquote(name)
+    except Exception:
+        pass
+    
+    # Replace invalid characters with underscore
+    name = re.sub(r'[^a-zA-Z0-9_]', '_', name)
+    
+    # Remove leading/trailing underscores and collapse multiple underscores
+    name = re.sub(r'_+', '_', name).strip('_')
+    
+    # Ensure it doesn't start with a number
+    if name and name[0].isdigit():
+        name = 'test_' + name
+    
+    # Ensure it starts with test_ if it doesn't
+    if not name.startswith('test_'):
+        name = 'test_' + name
+    
+    # Truncate if too long (Python identifier limit)
+    if len(name) > 100:
+        name = name[:100]
+    
+    return name or 'test_unnamed'
+
+
+def load_analysis_data(analysis_file: Path) -> Optional[Dict[str, Any]]:
+    """Load AI analysis JSON file with randomized data."""
+    try:
+        if analysis_file and analysis_file.exists():
+            with open(analysis_file, 'r', encoding='utf-8') as f:
+                return json.load(f)
+    except Exception as e:
+        print(f"Warning: Could not load analysis file: {e}")
+    return None
+
+
+def get_phase_name(interaction):
+    """Extract phase name from interaction, default to 'examples'."""
+    try:
+        # Phase is at top level of interaction (sibling to components)
+        if 'phase' in interaction:
+            phase_obj = interaction['phase']
+            if isinstance(phase_obj, dict):
+                phase_name = phase_obj.get('name', 'examples')
+            elif isinstance(phase_obj, str):
+                phase_name = phase_obj
+            else:
+                phase_name = None
+            
+            if phase_name:
+                return phase_name.lower()
+        
+        # Fallback: try nested in components (shouldn't happen but be safe)
+        phase_name = interaction.get('components', {}).get('phase', {}).get('name', None)
+        if phase_name:
+            return phase_name.lower()
+    except (AttributeError, KeyError, TypeError):
+        pass
+    
+    # Default to examples
+    return 'examples'
+
+
+def generate_test_function(interaction, test_index, analysis_data: Optional[Dict[str, Any]] = None):
+    """Generate a pytest test function from a VCR interaction.
+    
+    Args:
+        interaction: VCR interaction dict
+        test_index: Test index for naming
+        analysis_data: Optional AI analysis data with randomized request data
+    """
+    req = interaction['request']
+    resp = interaction['response']
+    test_id = interaction.get('id', f'test_{test_index}')
+    status = interaction.get('status', 'UNKNOWN')
+    phase = get_phase_name(interaction)
+    
+    method = req['method'].lower()
+    uri = req['uri']
+    parsed = urlparse(uri)
+    path = parsed.path
+    query_string = parsed.query  # Preserve query params
+    base_url = f"{parsed.scheme}://{parsed.netloc}"
+    
+    # Extract headers (skip internal Schemathesis headers)
+    headers = {k: v[0] if isinstance(v, list) else v 
+               for k, v in req.get('headers', {}).items()
+               if not k.startswith('X-Schemathesis-')}
+    
+    # Extract body - check if we have randomized data from AI analysis
+    body_str = ""
+    has_body = False
+    randomized_data = None
+    
+    # Check if we have randomized data for this test
+    if analysis_data and 'analyses' in analysis_data:
+        test_analysis = analysis_data['analyses'].get(test_id, {})
+        randomized_data = test_analysis.get('randomized_request_data')
+    
+    if 'body' in req and 'string' in req['body']:
+        has_body = True
+        
+        if randomized_data:
+            # Use randomized data - actual random values generated by AI
+            body_str = "\n        # Randomized test data (from AI analysis)"
+            body_str += f"\n        body = {repr(randomized_data)}"
+        else:
+            # Use hardcoded VCR data
+            try:
+                body_dict = json.loads(req['body']['string'])
+                body_str = f"\n        body = {repr(body_dict)}"
+            except (json.JSONDecodeError, TypeError):
+                body_str = f'\n        body = {repr(req["body"].get("string", ""))}'
+    
+    # Build assertions based on status (using soft assertions)
+    assertions = []
+    recorded_status = int(resp['status']['code'])
+    
+    # Check if status_code_conformance failed - if so, don't assert the recorded status
+    # because it doesn't match the OpenAPI spec
+    failed_checks = []
+    status_code_conformance_failed = False
+    for check_item in interaction.get('checks', []):
+        if check_item.get('status') == 'FAILURE':
+            check_name = check_item.get('name', 'unknown')
+            failed_checks.append(check_name)
+            if check_name == 'status_code_conformance':
+                status_code_conformance_failed = True
+    
+    # Always assert the recorded status code (for regression testing)
+    # If status_code_conformance failed, we'll mark the test as xfail
+    # Use soft assertions from pytest-check (all tests run even if assertions fail)
+    # Indent for class method (8 spaces)
+    assertions.append(f"        check.equal(response.status_code, {recorded_status}, "
+                     f"f'Expected status {recorded_status}, got {{response.status_code}}')")
+    
+    # Add note if status code doesn't match spec
+    if status_code_conformance_failed:
+        assertions.append(f"        # NOTE: API returned {recorded_status}, but OpenAPI spec expects different status code")
+        assertions.append(f"        # This test documents current API behavior (regression test)")
+        assertions.append(f"        # Status code conformance check failed in Schemathesis")
+    
+    # For successful tests, optionally check body
+    # Only check body if status code matches (to avoid JSON parsing errors on error responses)
+    if status == 'SUCCESS' and 'body' in resp and 'string' in resp['body']:
+        try:
+            resp_body = json.loads(resp['body']['string'])
+            # Only parse JSON if status code matches - wrap in try/except to handle errors gracefully
+            # Use response_data variable so fix_hardcoded_assertions.py can recognize it
+            assertions.append(f"        # Only check body if status code matches")
+            assertions.append(f"        if response.status_code == {recorded_status}:")
+            assertions.append(f"            try:")
+            assertions.append(f"                response_data = response.json()")
+            assertions.append(f"                check.equal(response_data, {repr(resp_body)}, "
+                            f"'Response body mismatch')")
+            assertions.append(f"            except (json.JSONDecodeError, requests.exceptions.JSONDecodeError):")
+            assertions.append(f"                # Response is not JSON - skip body check")
+            assertions.append(f"                pass")
+        except (json.JSONDecodeError, TypeError):
+            # If body is not JSON, just check that response has content (only if status matches)
+            assertions.append(f"        # Only check body if status code matches")
+            assertions.append(f"        if response.status_code == {recorded_status}:")
+            assertions.append(f"            check.is_not_none(response.text, 'Response should have body')")
+    
+    # For failed tests, add comment about why it failed
+    if status == 'FAILURE' and failed_checks:
+        assertions.append(f"        # Original failed checks: {', '.join(failed_checks)}")
+    
+    assertions_str = "\n".join(assertions)
+    
+    # Generate sanitized function name
+    func_name = sanitize_function_name(f"{method}_{path}_{test_index}")
+    
+    # Build request call
+    # Handle unsupported HTTP methods (TRACE, OPTIONS, etc.) using requests.request()
+    supported_methods = ['get', 'post', 'put', 'patch', 'delete', 'head', 'options']
+    use_request_method = method not in supported_methods
+    
+    if use_request_method:
+        # Use requests.request() for unsupported methods like TRACE
+        request_params = f'method="{req["method"]}", url=url, headers=headers'
+        if has_body:
+            request_params += ", data=body"
+        request_call = f'response = requests.request({request_params})'
+    else:
+        # Use method-specific function for supported methods
+        request_params = "url, headers=headers"
+        if has_body and method in ['post', 'put', 'patch']:
+            request_params += ", json=body"
+        elif has_body:
+            request_params += ", data=body"
+        request_call = f'response = requests.{method}({request_params})'
+    
+    # Normalize headers (remove Content-Length and User-Agent)
+    normalized_headers = {k: v for k, v in headers.items() 
+                         if k.lower() not in ['content-length', 'user-agent']}
+    # Ensure Accept header
+    if 'Accept' not in normalized_headers:
+        normalized_headers['Accept'] = 'application/json'
+    # Add Content-Type only if body exists
+    if has_body and 'Content-Type' not in normalized_headers:
+        normalized_headers['Content-Type'] = 'application/json'
+    
+    # Build URL line (without indentation - template handles it)
+    if query_string:
+        url_content = f'url = f"{{self.base_url}}{path}?{query_string}"'
+    else:
+        url_content = f'url = f"{{self.base_url}}{path}"'
+    
+    # Add pytest.mark.xfail decorator if status_code_conformance failed
+    decorator = ""
+    if status_code_conformance_failed:
+        decorator = "    @pytest.mark.xfail(reason='Status code does not match OpenAPI spec - API returns different status than documented')\n"
+    
+    test_code = f"""{decorator}    def {func_name}(self):
+        \"\"\"Test generated from Schemathesis VCR: {test_id}
+        Test: {req['method']} {path}{"?" + query_string if query_string else ""}
+        Phase: {phase}
+        Status: {status}
+        \"\"\"
+        import requests
+        
+        {url_content}
+        headers = self._normalize_headers({repr(normalized_headers)}){body_str}
+        
+        {request_call}
+        
+{assertions_str}
+"""
+    return test_code
+
+
+def get_phase_info(phase_name):
+    """Get phase-specific information from config."""
+    try:
+        # Try to import from config
+        import sys
+        from pathlib import Path
+        project_root = Path(__file__).parent.parent.parent
+        sys.path.insert(0, str(project_root))
+        from config import TEST_PHASES
+        return TEST_PHASES.get(phase_name.lower(), {
+            'class_name': f'TestPhase{phase_name.capitalize()}',
+            'description': f'{phase_name.capitalize()} phase tests',
+        })
+    except ImportError:
+        # Fallback if config not available
+        phase_info = {
+            'examples': {
+                'class_name': 'TestPhaseExamples',
+                'description': 'Examples phase tests - basic functionality from OpenAPI spec',
+            },
+            'coverage': {
+                'class_name': 'TestPhaseCoverage',
+                'description': 'Coverage phase tests - edge cases and coverage expansion',
+            },
+            'fuzzing': {
+                'class_name': 'TestPhaseFuzzing',
+                'description': 'Fuzzing phase tests - property-based random inputs',
+                'note': 'Note: Many tests may expect 500 errors or invalid responses',
+            },
+            'stateful': {
+                'class_name': 'TestPhaseStateful',
+                'description': 'Stateful phase tests - multi-step workflows',
+            },
+        }
+        return phase_info.get(phase_name.lower(), {
+            'class_name': f'TestPhase{phase_name.capitalize()}',
+            'description': f'{phase_name.capitalize()} phase tests',
+        })
+
+
+def generate_phase_test_file(vcr_file, phase_name, interactions, output_dir, analysis_data: Optional[Dict[str, Any]] = None):
+    """Generate a test file for a specific phase."""
+    phase_info = get_phase_info(phase_name)
+    class_name = phase_info['class_name']
+    description = phase_info['description']
+    
+    # Count stats
+    success_count = sum(1 for i in interactions if i.get('status') == 'SUCCESS')
+    failure_count = len(interactions) - success_count
+    
+    # No longer need to collect imports - AI provides actual values, not code
+    
+    # Generate file header
+    output = f'''"""
+Schemathesis {phase_name.capitalize()} Phase Tests
+Generated from: {Path(vcr_file).name}
+Phase: {phase_name}
+Total tests: {len(interactions)}
+
+{description}
+{f"⚠️  {phase_info.get('note', '')}" if phase_info.get('note') else ''}
+
+Note: Uses soft assertions via pytest-check.
+All tests will run even if assertions fail.
+Install: pip install pytest-check
+
+Run with: pytest {Path(output_dir).name}/test_phase_{phase_name}.py -v
+"""
+
+import pytest
+import pytest_check as check  # Soft assertions - all tests run even if some fail
+import requests
+import json
+from test.conftest import BASE_URL, get_auth_basic_header
+
+
+class {class_name}:
+    \"\"\"{description}\"\"\"
+    
+    @pytest.fixture(autouse=True)
+    def setup(self):
+        \"\"\"Setup shared configuration for all tests.\"\"\"
+        self.base_url = BASE_URL
+        self.auth_basic = get_auth_basic_header()
+        yield
+    
+    def _normalize_headers(self, headers):
+        \"\"\"Normalize headers, removing Content-Length as it's auto-calculated.\"\"\"
+        normalized = {{}}
+        for k, v in headers.items():
+            # Skip Content-Length as requests library calculates it automatically
+            if k.lower() not in ['content-length', 'user-agent']:
+                normalized[k] = v
+        # Ensure required headers
+        if 'Accept' not in normalized:
+            normalized['Accept'] = 'application/json'
+        if 'Content-Type' not in normalized:
+            # Add Content-Type only if we have a body
+            pass
+        return normalized
+    
+'''
+    
+    # Generate test methods
+    for idx, interaction in enumerate(interactions):
+        output += generate_test_function(interaction, idx, analysis_data)
+    
+    # Write output file
+    output_file = Path(output_dir) / f'test_phase_{phase_name}.py'
+    with open(output_file, 'w') as f:
+        f.write(output)
+    
+    return {
+        'file': str(output_file),
+        'phase': phase_name,
+        'total': len(interactions),
+        'success': success_count,
+        'failure': failure_count,
+    }
+
+
+def convert_vcr_to_pytest(vcr_file, output_dir, analysis_file: Optional[Path] = None):
+    """Convert VCR YAML to pytest test files organized by phase.
+    
+    Args:
+        vcr_file: Path to VCR YAML file
+        output_dir: Directory for generated test files
+        analysis_file: Optional path to AI analysis JSON with randomized data
+    """
+    # Load analysis data if provided
+    analysis_data = None
+    if analysis_file:
+        print(f"Loading AI analysis data: {analysis_file}")
+        analysis_data = load_analysis_data(analysis_file)
+        if analysis_data:
+            kept_count = analysis_data.get('tests_to_keep', 0)
+            print(f"  ✓ Loaded analysis for {kept_count} tests with randomized data\n")
+        else:
+            print("  ⚠ Failed to load analysis data - will use hardcoded VCR values\n")
+    
+    with open(vcr_file, 'r') as f:
+        vcr_data = yaml.safe_load(f)
+    
+    interactions = vcr_data.get('http_interactions', [])
+    
+    # Create output directory if it doesn't exist
+    output_path = Path(output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
+    
+    # Create __init__.py if it doesn't exist
+    init_file = output_path / '__init__.py'
+    if not init_file.exists():
+        with open(init_file, 'w') as f:
+            f.write('# Schemathesis generated tests organized by phase\n')
+    
+    # Group interactions by phase
+    phases = defaultdict(list)
+    for idx, interaction in enumerate(interactions):
+        phase = get_phase_name(interaction)
+        phases[phase].append(interaction)
+    
+    # Generate test file for each phase
+    results = []
+    for phase_name, phase_interactions in sorted(phases.items()):
+        result = generate_phase_test_file(vcr_file, phase_name, phase_interactions, output_dir, analysis_data)
+        results.append(result)
+    
+    # Print summary
+    print(f"\n✅ Generated {len(interactions)} tests in {len(phases)} phase files:")
+    if analysis_data:
+        print(f"   📊 Using AI-generated randomized test data")
+    print(f"   Output directory: {output_dir}\n")
+    for result in results:
+        print(f"   📄 {Path(result['file']).name}")
+        print(f"      Phase: {result['phase']}")
+        print(f"      Tests: {result['total']} ({result['success']} success, {result['failure']} failure)")
+    print()
+
+
+if __name__ == '__main__':
+    import argparse
+    
+    parser = argparse.ArgumentParser(
+        description='Convert Schemathesis VCR YAML to pytest test files'
+    )
+    parser.add_argument('vcr_file', type=str, help='Path to VCR YAML file')
+    parser.add_argument('output_dir', type=str, help='Output directory for test files')
+    parser.add_argument(
+        '--analysis',
+        type=str,
+        help='Path to AI analysis JSON file with randomized test data'
+    )
+    
+    args = parser.parse_args()
+    
+    analysis_file = Path(args.analysis) if args.analysis else None
+    
+    convert_vcr_to_pytest(args.vcr_file, args.output_dir, analysis_file)
+

@@ -1,0 +1,27 @@
+base-url = "https://restful-booker.herokuapp.com"
+request-timeout = 10.0
+
+[checks]
+max_response_time = 2.0
+
+[output.sanitization]
+enabled = false
+
+[generation] 
+max-examples = 50
+mode = "all"
+unique-inputs = true
+
+[phases.examples]
+enabled = true
+
+[phases.coverage]
+enabled = true
+unexpected-methods = ["TRACE"]
+
+[phases.fuzzing]
+enabled = true
+
+[phases.stateful]
+enabled = true
+max-steps = 50

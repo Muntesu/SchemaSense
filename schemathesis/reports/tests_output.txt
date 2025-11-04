@@ -1,0 +1,402 @@
+Schemathesis v4.3.15
+━━━━━━━━━━━━━━━━━━━━
+
+
+ ✅  Loaded specification from schemathesis/restful-booker-oas.yaml (in 0.18s)                                                                              
+
+     Base URL:         https://restful-booker.herokuapp.com                                                                                                 
+     Specification:    Open API 3.0.1                                                                                                                       
+     Operations:       8 selected / 8 total                                                                                                                 
+
+
+ ✅  API capabilities:                                                                                                                                      
+
+     Supports NULL byte in headers:    ✘                                                                                                                    
+
+ ❌  Examples (in 1.38s)                                                                                                                                    
+                                                                                                                                                            
+     ✅ 5 passed  ❌ 2 failed  ⏭  1 skipped                                                                                                                 
+
+ ❌  Coverage (in 2.64s)                                                                                                                                    
+                                                                                                                                                            
+     ❌ 8 failed                                                                                                                                            
+
+ ❌  Fuzzing (in 1.04s)                                                                                                                                     
+                                                                                                                                                            
+     ✅ 2 passed  ❌ 6 failed                                                                                                                               
+
+ ❌  Stateful (in 39.77s)                                                                                                                                   
+
+     Scenarios:    67                                                                                                                                       
+     API Links:    2 covered / 16 selected / 16 total (16 inferred)                                                                                         
+
+     ✅ 57 passed  ❌ 10 failed                                                                                                                             
+
+=================================== FAILURES ===================================
+_________________________________ GET /booking _________________________________
+1. Test Case ID: 4NQlX7
+
+- Server error
+
+- Undocumented HTTP status code
+
+    Received: 500
+    Documented: 200, 400
+
+[500] Internal Server Error:
+
+    `Internal Server Error`
+
+Reproduce with: 
+
+    curl -X GET -H 'Accept: application/json' -H 'Authorization: [Filtered]' -H 'Content-Type: application/json' 'https://restful-booker.herokuapp.com/booking?firstname=%28omit%29&lastname=%28omit%29&checkin=123&checkout=%28omit%29'
+
+_____________________________ DELETE /booking/{id} _____________________________
+1. Test Case ID: aiufaS
+
+- API rejected schema-compliant request
+
+    Valid data should have been accepted
+    Expected: 2xx, 401, 403, 404, 5xx
+
+- Undocumented HTTP status code
+
+    Received: 405
+    Documented: 201, 404
+
+[405] Method Not Allowed:
+
+    `Method Not Allowed`
+
+Reproduce with: 
+
+    curl -X DELETE -H 'Accept: application/json' -H 'Authorization: [Filtered]' -H 'Content-Type: application/json' https://restful-booker.herokuapp.com/booking/-1
+
+2. Test Case ID: k5KYV7
+
+- Missing header not rejected
+
+    Missing header not rejected (got 403, expected 401)
+
+- Undocumented HTTP status code
+
+    Received: 403
+    Documented: 201, 404
+
+[403] Forbidden:
+
+    `Forbidden`
+
+Reproduce with: 
+
+    curl -X DELETE -H 'Accept: application/json' -H 'Content-Type: application/json' https://restful-booker.herokuapp.com/booking/6
+
+__________________________________ POST /auth __________________________________
+1. Test Case ID: lJzGQ1
+
+- Unsupported methods
+
+    Unsupported method TRACE returned 404, expected 405 Method Not Allowed
+
+    Return 405 for methods not listed in the OpenAPI spec
+
+[404] Not Found:
+
+    `Not Found`
+
+Reproduce with: 
+
+    curl -X TRACE -H 'Accept: application/json' -H 'Authorization: [Filtered]' -H 'Content-Type: application/json' -d '{"username": "admin2", "password": "password123"}' https://restful-booker.herokuapp.com/auth
+
+______________________________ GET /booking/{id} _______________________________
+1. Test Case ID: 6vt2TO
+
+- Unsupported methods
+
+    Unsupported method TRACE returned 404, expected 405 Method Not Allowed
+
+    Return 405 for methods not listed in the OpenAPI spec
+
+[404] Not Found:
+
+    `Not Found`
+
+Reproduce with: 
+
+    curl -X TRACE -H 'Accept: application/json' -H 'Authorization: [Filtered]' -H 'Content-Type: application/json' https://restful-booker.herokuapp.com/booking/3
+
+________________________________ POST /booking _________________________________
+1. Test Case ID: IOPk2S
+
+- Unsupported methods
+
+    Unsupported method TRACE returned 404, expected 405 Method Not Allowed
+
+    Return 405 for methods not listed in the OpenAPI spec
+
+[404] Not Found:
+
+    `Not Found`
+
+Reproduce with: 
+
+    curl -X TRACE -H 'Accept: application/json' -H 'Authorization: [Filtered]' -H 'Content-Type: application/json' -d '{"firstname": "Jim", "lastname": "Brown", "totalprice": 111, "depositpaid": true, "bookingdates": {"checkin": "2018-01-01", "checkout": "2019-01-01"}, "additionalneeds": "Breakfast"}' https://restful-booker.herokuapp.com/booking
+
+2. Test Case ID: cVsFST
+
+- Server error
+
+- Undocumented HTTP status code
+
+    Received: 500
+    Documented: 200, 400
+
+[500] Internal Server Error:
+
+    `Internal Server Error`
+
+Reproduce with: 
+
+    curl -X POST -H 'Accept: application/json' -H 'Authorization: [Filtered]' -H 'Content-Type: application/json' -d '{"\ud9e1\udc9aN": [[], {"\u00d1": [[], 1.4395580150315259e+178, []]}, {"\ud91e\udc2d\u000f\u008a\u00bd\u00dc": [{}, {"8\u0012\u00c7\u0093\u00b0\u00db+\ud85f\udcc8\udb41\udded": {"\u00f8\ud8a9\udc6f": "\ud8ca\uddb5{+\uda86\udfb4\u0019\u00b4\u009a\u00dfe\u00e70\udbfc\udf15", "S}": {"\u0081\u00f2\u009f\u0089\u00e9\u00c7p\u00e9)\u009a\u001d&_\f": 5.33864601296819e+16}}, "Scunthorpe": {}, "\ud9da\ude80qF\ud846\udce7\ud8f7\udd90\u00b6\u00b9\u00e3\u0082 i\ud901\udea2\udb4a\udd81\u00fa": -1.7579685091942724e+16}]}], "additionalneeds": "v\u00b7<\u0098\u00fb\udb33\udfd9\u00f2", "lastname": "\u008c\u00dd\u0090^*\udabf\uddfa|a2\u00f2", "\u00e7\udb70\udead\udb3d\udc6d": {"\ud8d0\udfc2\u00d5\u0000\\+": {}}, "\u00d9\u00b4": {"\u00b7\u00af&\ud914\udc90": null, "": -9443, "\u00ad\u00db\u00b5\u00c1": 23675}, "": [null, -5.217821659588456e+16, "\u0013\u00d6\u00c27\u0006g"], "totalprice": 25531}' https://restful-booker.herokuapp.com/booking
+
+______________________________ PUT /booking/{id} _______________________________
+1. Test Case ID: k5qGt5
+
+- Missing header not rejected
+
+    Missing header not rejected (got 403, expected 401)
+
+- Undocumented HTTP status code
+
+    Received: 403
+    Documented: 200, 400
+
+[403] Forbidden:
+
+    `Forbidden`
+
+Reproduce with: 
+
+    curl -X PUT -H 'Accept: application/json' -H 'Content-Type: application/json' -d '{"firstname": "Mary", "lastname": "Jones", "totalprice": 111, "depositpaid": true, "bookingdates": {"checkin": "2018-01-01", "checkout": "2019-01-01"}, "additionalneeds": "Breakfast"}' https://restful-booker.herokuapp.com/booking/8
+
+2. Test Case ID: gdLys5
+
+- API rejected schema-compliant request
+
+    Valid data should have been accepted
+    Expected: 2xx, 401, 403, 404, 5xx
+
+- Undocumented HTTP status code
+
+    Received: 405
+    Documented: 200, 400
+
+[405] Method Not Allowed:
+
+    `Method Not Allowed`
+
+Reproduce with: 
+
+    curl -X PUT -H 'Accept: application/json' -H 'Authorization: [Filtered]' -H 'Content-Type: application/json' -d '{"bookingdates": {"checkin": "2000-01-01", "checkout": "2000-01-01"}, "depositpaid": false, "firstname": "", "lastname": "", "totalprice": 0}' https://restful-booker.herokuapp.com/booking/0
+
+_____________________________ PATCH /booking/{id} ______________________________
+1. Test Case ID: eTttZk
+
+- Missing header not rejected
+
+    Missing header not rejected (got 403, expected 401)
+
+- Undocumented HTTP status code
+
+    Received: 403
+    Documented: 200, 400
+
+[403] Forbidden:
+
+    `Forbidden`
+
+Reproduce with: 
+
+    curl -X PATCH -H 'Accept: application/json' -H 'Content-Type: application/json' -d '{"firstname": "Jim", "lastname": "Brown", "totalprice": 111, "depositpaid": true, "bookingdates": {"checkin": "2018-01-01", "checkout": "2019-01-01"}, "additionalneeds": "Breakfast"}' https://restful-booker.herokuapp.com/booking/7
+
+2. Test Case ID: lVQYGc
+
+- API rejected schema-compliant request
+
+    Valid data should have been accepted
+    Expected: 2xx, 401, 403, 404, 5xx
+
+- Undocumented HTTP status code
+
+    Received: 405
+    Documented: 200, 400
+
+[405] Method Not Allowed:
+
+    `Method Not Allowed`
+
+Reproduce with: 
+
+    curl -X PATCH -H 'Accept: application/json' -H 'Authorization: [Filtered]' -H 'Content-Type: application/json' -d '{"bookingdates": {"checkin": "2000-01-01", "checkout": "2000-01-01"}, "depositpaid": false, "firstname": "", "lastname": "", "totalprice": 0}' https://restful-booker.herokuapp.com/booking/0
+
+__________________________________ GET /ping ___________________________________
+1. Test Case ID: bqbJ3Q
+
+- Unsupported methods
+
+    Unsupported method TRACE returned 404, expected 405 Method Not Allowed
+
+    Return 405 for methods not listed in the OpenAPI spec
+
+[404] Not Found:
+
+    `Not Found`
+
+Reproduce with: 
+
+    curl -X TRACE -H 'Accept: application/json' -H 'Authorization: [Filtered]' -H 'Content-Type: application/json' https://restful-booker.herokuapp.com/ping
+
+2. Test Case ID: AfzlJb
+
+- Undocumented Content-Type
+
+    Received: text/plain; charset=utf-8
+    Documented: application/json
+
+[201] Created:
+
+    `Created`
+
+Reproduce with: 
+
+    curl -X GET -H 'Accept: application/json' -H 'Authorization: [Filtered]' -H 'Content-Type: application/json' https://restful-booker.herokuapp.com/ping
+
+________________________________ Stateful tests ________________________________
+1. Test Case ID: 12JEcA
+
+- API accepted schema-violating request
+
+    Invalid data should have been rejected
+    Expected: 400, 401, 403, 404, 406, 422, 428, 5xx
+
+[405] Method Not Allowed:
+
+    `Method Not Allowed`
+
+Reproduce with: 
+
+    curl -X POST -H 'Accept: application/json' -H 'Authorization: [Filtered]' -H 'Content-Type: application/json' -d '{"bookingdates": {"checkin": "9751-08-01", "checkout": "1339-09-25", "": {"": null}}, "depositpaid": true, "firstname": "TestPhaseFuzzing", "lastname": "\u00caP\u0015", "totalprice": 300}' https://restful-booker.herokuapp.com/booking
+    curl -X DELETE -H 'Accept: application/json' -H 'Authorization: [Filtered]' -H 'Content-Type: application/json' https://restful-booker.herokuapp.com/booking/false
+
+2. Test Case ID: ETnbil
+
+- API accepted schema-violating request
+
+    Invalid data should have been rejected
+    Expected: 400, 401, 403, 404, 406, 422, 428, 5xx
+
+[405] Method Not Allowed:
+
+    `Method Not Allowed`
+
+Reproduce with: 
+
+    curl -X POST -H 'Accept: application/json' -H 'Authorization: [Filtered]' -H 'Content-Type: application/json' -d '{"bookingdates": {"checkin": "1861-12-04", "checkout": "3212-05-19", "7\udaf5\ude18C": []}, "depositpaid": true, "firstname": "/{og", "lastname": "ai-failure-analysis-", "totalprice": 88630196260771867805598587885428347272, "\ud9ee\ude87\u00a7\u00e8L\n\u1d22": [[], {"\ud9b0\udf29": {"\u00cf\u7a66\u0018g\u0080\u00c9\u0018\u00ef": {"mm": -1.895903806999245e+123}}, "\u03a9\u2248\u00e7\u221a\u222b\u02dc\u00b5\u2264\u2265\u00f7\u00e5\u00df\u2202\u0192\u00a9\u02d9\u2206\u02da\u00ac\u2026\u00e6\u0153\u2211\u00b4\u00ae\u2020\u00a5\u00a8\u02c6\u00f8\u03c0\u201c\u2018\u00a1\u2122\u00a3\u00a2\u221e\u00a7\u00b6\u2022\u00aa\u00ba\u2013\u2260\u00b8\u02db\u00c7\u25ca\u0131\u02dc\u00c2\u00af\u02d8\u00bf\u00c5\u00cd\u00ce\u00cf\u02dd\u00d3\u00d4\uf8ff\u00d2\u00da\u00c6\u2603\u0152\u201e\u00b4\u2030\u02c7\u00c1\u00a8\u02c6\u00d8\u220f\u201d\u2019`\u2044\u20ac\u2039\u203a\ufb01\ufb02\u2021\u00b0\u00b7\u201a\u2014\u00b1": [], "\u00a6\u00d5\u00ab`<\u00eb\u00a1\u00ee\u008c1\u00ae\ud8f5\udfe7\ufb12\u00ca\u00d6G\ud854\ude88": [73, {}, [29574, false]]}, {"\\TZ\ud92d\udc9f\ud8f6\ude4e\u00c6": "f\u00eeA\u0011/", "a:\u00a4\u00be\u000e/o": -5355, "\u00d2\u00fd": {}}], "\u008ds\u0093\u00c8\ud981\udcee": [], "additionalneeds": ",\u008d\u008c"}' https://restful-booker.herokuapp.com/booking
+    curl -X PATCH -H 'Accept: application/json' -H 'Authorization: [Filtered]' -H 'Content-Type: application/json' -d '{"firstname": "/{og", "lastname": "ai-failure-analysis-", "totalprice": 8, "depositpaid": true, "bookingdates": {"checkin": "1861-12-04", "checkout": "3212-05-19"}}' https://restful-booker.herokuapp.com/booking/true
+
+3. Test Case ID: Nig8gX
+
+- Undocumented Content-Type
+
+    Received: text/plain; charset=utf-8
+    Documented: application/json
+
+[201] Created:
+
+    `Created`
+
+Reproduce with: 
+
+    curl -X POST -H 'Accept: application/json' -H 'Authorization: [Filtered]' -H 'Content-Type: application/json' -d '{"bookingdates": {"checkin": "5539-09-14", "checkout": "4451-09-15", "\ud9eb\udcae\udaab\ude3a\udaab\ude2f\u00eb|D\ud8f1\udeb7|\udbad\ude12~\udbbf\uddddf|": []}, "depositpaid": false, "firstname": "", "lastname": "\u0097", "totalprice": 56}' https://restful-booker.herokuapp.com/booking
+    curl -X DELETE -H 'Accept: application/json' -H 'Authorization: [Filtered]' -H 'Content-Type: application/json' https://restful-booker.herokuapp.com/booking/45
+
+4. Test Case ID: j5OYam
+
+- API accepted schema-violating request
+
+    Invalid data should have been rejected
+    Expected: 400, 401, 403, 404, 406, 422, 428, 5xx
+
+[405] Method Not Allowed:
+
+    `Method Not Allowed`
+
+Reproduce with: 
+
+    curl -X POST -H 'Accept: application/json' -H 'Authorization: [Filtered]' -H 'Content-Type: application/json' -d '{"bookingdates": {"checkin": "0675-01-01", "checkout": "4897-04-27", "s": [[-7.624031540051255e+208], {"D\u00cb\b": -5}], "": [[], [null, -14749, 1.7976931348623155e+308], [-2.3065581765686908e+16]]}, "depositpaid": false, "firstname": "\u00965)N\u00de", "lastname": "$\u00e8=\u00b5\u00e9\ud951\udd91\u00bb(", "totalprice": 22831}' https://restful-booker.herokuapp.com/booking
+    curl -X PUT -H 'Accept: application/json' -H 'Authorization: [Filtered]' -H 'Content-Type: application/json' -d '{"firstname": "\u00965)N\u00de", "lastname": "$\u00e8=\u00b5\u00e9\ud951\udd91\u00bb(", "totalprice": 22831, "depositpaid": false, "bookingdates": {"checkin": "0675-01-01", "checkout": "4897-04-27"}}' https://restful-booker.herokuapp.com/booking/%C3%B5%F2%B1%94%A4%5D%C2%97%C2%88D%C2%A7%C2%AB%C2%9C
+
+5. Test Case ID: 7Mn4EM
+
+- API accepted schema-violating request
+
+    Invalid data should have been rejected
+    Expected: 400, 401, 403, 404, 406, 422, 428, 5xx
+
+[200] OK:
+
+    `{"firstname":"(𝡾3Óµ+","lastname":"à񒻺Z󸧰i*","totalprice":4432449412605653500,"depositpaid":true,"bookingdates":{"checkin":"2016-03-09","checkout":"2021-03-24"},"additionalneeds":"Breakfast"}`
+
+Reproduce with: 
+
+    curl -X POST -H 'Accept: application/json' -H 'Authorization: [Filtered]' -H 'Content-Type: application/json' -d '{"bookingdates": {"checkin": "4582-01-05", "checkout": "3732-04-15", "\u0082": [], "\u0015": {"": {}}, "l\ud88e\udd28\udb27\udf3c\u008a\u0088d\ud839\udeec\udbdf\udc7bZ\ud964\udf58\uda23\uddcc\u001a\u008b\u00df4\ud98d\uded9": [], "\u0007": [[], [], []], "": [], "?\u0002a\u00e3\u00c4": [[{}], {}, [[true, 9.529896556729487e-209], {"\u00b7\u00f9\u00a4V\u00a1": 27116, "M\u00a3\u008eou\u00e8\ud8c7\udcdf{\u00a5\u00ca": [], "*": -3.9577981784548355e-143}, [false, {}, [1197]]]], "\u00e0\udac6\uddc1\u007f\u00cb\u0092\u00c3\ud926\udf73\u0018\u00a1": [[""], {"": 67, "\u0006": true}, ["Ssv\u001a\u00a0\ud826\udeb3\udbb4\udeeb\u00c8", false, null]], "d": {"\ud927\udde6'"'"'\u00ab\u0017": [{"\u00fc'"'"'\u00d8": {"\u009c\ud8d9\udf19\u00d9T\u0080\u008f\u0003\uede7\ud82b\udf36\u00ed\u00c4": null, "\u00fd": -109}}], "\u00e0N\u0005KR\u00d0\u00ebd\ud9a0\udcfa\ud9cb\ude61\u00c9\"\u00cf\ud81f\udca3\u008f\udbc0\udf32\u00ab\u042fI\u008e": {"\u00ef": null, "": ["  ", 1.7976931348623157e+308], "\u00cb": ["", true, null]}, "ai-failure-analysis-": [[], -3.3179062777461806e+156]}}, "depositpaid": true, "firstname": "(\ud836\udc7e3\u00d3\u00b5+", "lastname": "\u00e0\ud90b\udefaZ\udba2\uddf0i*", "totalprice": 4432449412605653445, "": [2649498397279740.0, -6.5103293916601656e+16]}' https://restful-booker.herokuapp.com/booking
+    curl -X PATCH -H 'Accept: application/json' -H 'Authorization: [Filtered]' -H 'Content-Type: application/json' -d '{"firstname": "(\ud836\udc7e3\u00d3\u00b5+", "lastname": "\u00e0\ud90b\udefaZ\udba2\uddf0i*", "totalprice": 4432449412605653500, "depositpaid": true}' https://restful-booker.herokuapp.com/booking/4
+
+6. Test Case ID: ZTTfLf
+
+- API accepted schema-violating request
+
+    Invalid data should have been rejected
+    Expected: 400, 401, 403, 404, 406, 422, 428, 5xx
+
+[200] OK:
+
+    `{"firstname":"Susan","lastname":"Brown","totalprice":289,"depositpaid":true,"bookingdates":{"checkin":"2020-04-24","checkout":"2024-02-18"},"additionalneeds":"Breakfast"}`
+
+Reproduce with: 
+
+    curl -X POST -H 'Accept: application/json' -H 'Authorization: [Filtered]' -H 'Content-Type: application/json' -d '{"bookingdates": {"checkin": "7054-09-22", "checkout": "4934-09-19"}, "depositpaid": true, "firstname": "v\ud8cb\uddda\b", "lastname": "\u00f2", "totalprice": -5510334697142063338}' https://restful-booker.herokuapp.com/booking
+    curl -X GET -H 'Accept: application/json' -H 'Authorization: [Filtered]' -H 'Content-Type: application/json' https://restful-booker.herokuapp.com/booking/5
+
+=================================== SUMMARY ====================================
+
+API Operations:
+  Selected: 8/8
+  Tested: 8
+
+Test Phases:
+  ❌ Examples
+  ❌ Coverage
+  ❌ Fuzzing
+  ❌ Stateful
+
+Failures:
+  ❌ Server error: 2
+  ❌ API accepted schema-violating request: 5
+  ❌ API rejected schema-compliant request: 3
+  ❌ Missing header not rejected: 3
+  ❌ Undocumented Content-Type: 2
+  ❌ Undocumented HTTP status code: 8
+  ❌ Unsupported methods: 4
+
+Test cases:
+  288 generated, 19 found 27 unique failures
+
+Reports:
+  - JUNIT: schemathesis/reports/junit-20251108T013750Z.xml
+  - VCR: schemathesis/reports/vcr-20251108T013750Z.yaml
+  - HAR: schemathesis/reports/har-20251108T013750Z.json
+
+Seed: 60605239383576114583179019023845220796
+
+============================ 27 failures in 55.31s =============================

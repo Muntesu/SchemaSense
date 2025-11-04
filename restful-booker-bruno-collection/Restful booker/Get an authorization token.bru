@@ -1,0 +1,31 @@
+meta {
+  name: Get an authorization token
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/auth
+  body: json
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/json
+  Accept: application/json
+}
+
+body:json {
+  {
+    "username": "{{username}}",
+    "password": "{{password}}"
+  }
+}
+
+tests {
+  test("should return 200 and token", function () {
+    expect(res.getStatus()).to.equal(200);
+    const body = res.getBody();
+    expect(body).to.have.property("token");
+  });
+}

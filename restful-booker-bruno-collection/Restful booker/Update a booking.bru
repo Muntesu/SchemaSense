@@ -1,0 +1,41 @@
+meta {
+  name: Update a booking
+  type: http
+  seq: 7
+}
+
+put {
+  url: {{baseUrl}}/booking/:id
+  body: json
+  auth: inherit
+}
+
+params:path {
+  id: {{bookingId}}
+}
+
+headers {
+  Authorization: Basic YWRtaW46cGFzc3dvcmQxMjM=
+  Content-Type: application/json
+  Accept: application/json
+}
+
+body:json {
+  {
+    "firstname": "Jane",
+    "lastname": "Smith",
+    "totalprice": 200,
+    "depositpaid": false,
+    "bookingdates": {
+      "checkin": "2024-02-01",
+      "checkout": "2024-02-05"
+    },
+    "additionalneeds": "WiFi"
+  }
+}
+
+tests {
+  test("should return 200", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+}

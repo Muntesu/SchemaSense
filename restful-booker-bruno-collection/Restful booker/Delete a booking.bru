@@ -1,0 +1,25 @@
+meta {
+  name: Delete a booking
+  type: http
+  seq: 9
+}
+
+delete {
+  url: {{baseUrl}}/booking/:id
+  body: none
+  auth: inherit
+}
+
+params:path {
+  id: {{bookingId}}
+}
+
+headers {
+  Authorization: Basic YWRtaW46cGFzc3dvcmQxMjM=
+}
+
+tests {
+  test("should return 201", function () {
+    expect(res.getStatus()).to.equal(201);
+  });
+}

@@ -1,0 +1,41 @@
+meta {
+  name: Partially update a booking
+  type: http
+  seq: 8
+}
+
+patch {
+  url: {{baseUrl}}/booking/:id
+  body: json
+  auth: inherit
+}
+
+params:path {
+  id: {{bookingId}}
+}
+
+headers {
+  Authorization: Basic YWRtaW46cGFzc3dvcmQxMjM=
+  Content-Type: application/json
+  Accept: application/json
+}
+
+body:json {
+  {
+    "firstname": "Patched",
+    "lastname": "Doe",
+    "totalprice": 123,
+    "depositpaid": true,
+    "bookingdates": {
+      "checkin": "2024-01-10",
+      "checkout": "2024-01-12"
+    },
+    "additionalneeds": "Dinner"
+  }
+}
+
+tests {
+  test("should return 200", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+}

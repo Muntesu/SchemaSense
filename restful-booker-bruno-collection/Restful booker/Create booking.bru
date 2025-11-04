@@ -1,0 +1,39 @@
+meta {
+  name: Create booking
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/booking
+  body: json
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/json
+  Accept: application/json
+}
+
+body:json {
+  {
+    "firstname": "John",
+    "lastname": "Doe",
+    "totalprice": 123,
+    "depositpaid": true,
+    "bookingdates": {
+      "checkin": "2024-01-10",
+      "checkout": "2024-01-12"
+    },
+    "additionalneeds": "Breakfast"
+  }
+}
+
+tests {
+  test("should return 200 and bookingid", function () {
+    expect(res.getStatus()).to.equal(200);
+    const body = res.getBody();
+    expect(body).to.have.property("bookingid");
+    bru.setEnvVar("bookingId", String(body.bookingid), { persist: true });
+  });
+}
